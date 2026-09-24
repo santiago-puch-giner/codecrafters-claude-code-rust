@@ -1,6 +1,14 @@
-use async_openai::{Client, config::OpenAIConfig};
+use async_openai::{
+    Client,
+    config::OpenAIConfig,
+    types::chat::{
+        ChatCompletionMessageToolCalls, ChatCompletionRequestMessage,
+        ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
+        ChatCompletionTool, ChatCompletionTools, CreateChatCompletionRequest, FunctionObject,
+    },
+};
 use clap::Parser;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::{env, process};
 
 #[derive(Parser)]
@@ -37,24 +45,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::with_config(config);
 
-    #[allow(unused_variables)]
-    let response: Value = client
-        .chat()
-        .create_byot(json!({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": args.prompt
-                }
-            ],
-            "model": model,
-            "tools": [
-                {
-                  "type": "function",
-                  "function": {
-                    "name": "read",
-                    "description": "Read and return the contents of a file",
-                    "parameters": {
+    let request = CreateChatCompletionRequest {
+        model: model.to_string(),
+        messages: vec![ChatCompletionRequestMessage::User(
+            ChatCompletionRequestUserMessage {
+                content: ChatCompletionRequestUserMessageContent::Text(args.prompt.clone()),
+                name: None,
+            },
+        )],
+        tools: Some(vec![ChatCompletionTools::Function(ChatCompletionTool {
+            function: FunctionObject {
+                name: "read".to_string(),
+                description: Some("Read and return the contents of a file".to_string()),
+                parameters: Some(json!({
                       "type": "object",
                       "properties": {
                         "file_path": {
@@ -63,20 +66,74 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                       },
                       "required": ["file_path"]
-                    }
-                  }
-                }
-            ]
-        }))
-        .await?;
+
+                })),
+                strict: None,
+            },
+        })]),
+        ..Default::default()
+    };
+
+    let response = client.chat().create(request).await?;
+
+    // #[allow(unused_variables)]
+    // let response: Value = client
+    //     .chat()
+    //     .create_byot(json!({
+    //         "messages": [
+    //             {
+    //                 "role": "user",
+    //                 "content": args.prompt
+    //             }
+    //         ],
+    //         "model": model,
+    //         "tools": [
+    //             {
+    //               "type": "function",
+    //               "function": {
+    //                 "name": "read",
+    //                 "description": "Read and return the contents of a file",
+    //                 "parameters": {
+    //                   "type": "object",
+    //                   "properties": {
+    //                     "file_path": {
+    //                       "type": "string",
+    //                       "description": "The path to the file to read"
+    //                     }
+    //                   },
+    //                   "required": ["file_path"]
+    //                 }
+    //               }
+    //             }
+    //         ]
+    //     }))
+    //     .await?;
 
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
-    // TODO: Uncomment the lines below to pass the first stage
-    if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
-        println!("{}", content);
+    let chat_choice = response
+        .choices
+        .first()
+        .expect("Expected one choice in reponse");
+
+    if let Some(content) = &chat_choice.message.content {
+        println!("{}", content)
+    };
+
+    for tool_call in chat_choice.message.tool_calls.iter().flatten() {
+        match tool_call {
+            ChatCompletionMessageToolCalls::Function(call) => {
+                call_tool(&call.id, &call.function.name, &call.function.arguments);
+            }
+            _ => (),
+        }
     }
 
     Ok(())
+}
+
+fn call_tool(id: &str, name: &str, args: &str) {
+    // TODO: Actual tool call
+    println!("{} {} {}", id, name, args);
 }
