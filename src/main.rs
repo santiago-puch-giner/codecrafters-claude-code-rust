@@ -76,42 +76,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client.chat().create(request).await?;
 
-    // #[allow(unused_variables)]
-    // let response: Value = client
-    //     .chat()
-    //     .create_byot(json!({
-    //         "messages": [
-    //             {
-    //                 "role": "user",
-    //                 "content": args.prompt
-    //             }
-    //         ],
-    //         "model": model,
-    //         "tools": [
-    //             {
-    //               "type": "function",
-    //               "function": {
-    //                 "name": "read",
-    //                 "description": "Read and return the contents of a file",
-    //                 "parameters": {
-    //                   "type": "object",
-    //                   "properties": {
-    //                     "file_path": {
-    //                       "type": "string",
-    //                       "description": "The path to the file to read"
-    //                     }
-    //                   },
-    //                   "required": ["file_path"]
-    //                 }
-    //               }
-    //             }
-    //         ]
-    //     }))
-    //     .await?;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    eprintln!("Logs from your program will appear here!");
-
     let chat_choice = response
         .choices
         .first()
