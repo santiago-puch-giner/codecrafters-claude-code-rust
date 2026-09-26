@@ -1,3 +1,5 @@
+mod tools;
+
 use async_openai::{
     Client,
     config::OpenAIConfig,
@@ -19,7 +21,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let base_url = env::var("OPENROUTER_BASE_URL")
@@ -88,16 +90,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for tool_call in chat_choice.message.tool_calls.iter().flatten() {
         match tool_call {
             ChatCompletionMessageToolCalls::Function(call) => {
-                call_tool(&call.id, &call.function.name, &call.function.arguments);
+                tools::call_tool(&call.function.name, &call.function.arguments)?;
             }
             _ => (),
         }
     }
 
     Ok(())
-}
-
-fn call_tool(id: &str, name: &str, args: &str) {
-    // TODO: Actual tool call
-    println!("{} {} {}", id, name, args);
 }
